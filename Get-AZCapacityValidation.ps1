@@ -179,7 +179,23 @@ function Get-AZCapableTypes {
             $fullType = "$ns/$rtName"
 
             # Check if this resource type is available in the target region with zone support
-            $locationInfo = $rt.ZoneMappings | Where-Object { $_.Location -eq $Region }
+            # ZoneMappings property names vary across Az module versions
+            $locationInfo = $null
+            if ($rt.PSObject.Properties['ZoneMappings'] -and $rt.ZoneMappings) {
+                foreach ($zm in $rt.ZoneMappings) {
+                    $zmLoc = if ($zm.PSObject.Properties['Location']) { $zm.Location }
+                             elseif ($zm.PSObject.Properties['location']) { $zm.location }
+                             else { $null }
+                    if ($zmLoc -and $zmLoc -eq $Region) {
+                        $zmZones = if ($zm.PSObject.Properties['Zones']) { $zm.Zones }
+                                   elseif ($zm.PSObject.Properties['zones']) { $zm.zones }
+                                   else { @() }
+                        $locationInfo = @{ Zones = $zmZones }
+                        break
+                    }
+                }
+            }
+
             if ($locationInfo) {
                 $zones = $locationInfo.Zones -join ","
                 $azCapable[$fullType.ToLower()] = @{
@@ -189,7 +205,10 @@ function Get-AZCapableTypes {
             }
             else {
                 # Check if the type is at least available in the region (without zone info)
-                $availableLocations = $rt.Locations | ForEach-Object { $_.ToLower().Replace(" ", "") }
+                $locs = if ($rt.PSObject.Properties['Locations']) { $rt.Locations }
+                        elseif ($rt.PSObject.Properties['locations']) { $rt.locations }
+                        else { @() }
+                $availableLocations = $locs | ForEach-Object { $_.ToLower().Replace(" ", "") }
                 $normalizedTarget = $Region.ToLower().Replace(" ", "")
 
                 if ($availableLocations -contains $normalizedTarget) {
@@ -260,9 +279,23 @@ function Get-VMSkuZoneMap {
     foreach ($sku in $skus) {
         $name = $sku.Name
 
-        # Get zone details from LocationInfo
-        $locInfo = $sku.LocationInfo | Where-Object { $_.Location -eq $Region }
-        $zones = if ($locInfo -and $locInfo.Zones) { $locInfo.Zones -join "," } else { "None" }
+        # Get zone details from LocationInfo — handle property name variations
+        $locInfo = $null
+        if ($sku.PSObject.Properties['LocationInfo'] -and $sku.LocationInfo) {
+            foreach ($li in $sku.LocationInfo) {
+                $liLoc = if ($li.PSObject.Properties['Location']) { $li.Location }
+                         elseif ($li.PSObject.Properties['location']) { $li.location }
+                         else { $null }
+                if ($liLoc -and $liLoc -eq $Region) {
+                    $locInfo = $li
+                    break
+                }
+            }
+        }
+        $liZones = if ($locInfo -and $locInfo.PSObject.Properties['Zones'] -and $locInfo.Zones) { $locInfo.Zones }
+                   elseif ($locInfo -and $locInfo.PSObject.Properties['zones'] -and $locInfo.zones) { $locInfo.zones }
+                   else { @() }
+        $zones = if ($liZones.Count -gt 0) { $liZones -join "," } else { "None" }
 
         # Check restrictions
         $restrictions = @()
