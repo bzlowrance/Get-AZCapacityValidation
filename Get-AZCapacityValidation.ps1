@@ -242,7 +242,7 @@ function Get-ResourceInventory {
         Write-Host "Collecting inventory for subscription '$SubId'..." -ForegroundColor Cyan
     }
 
-    $resources = Get-AzResource @params
+    $resources = @(Get-AzResource @params)
 
     Write-Host "  Found $($resources.Count) resources." -ForegroundColor Green
     return $resources
@@ -292,9 +292,9 @@ function Get-VMSkuZoneMap {
                 }
             }
         }
-        $liZones = if ($locInfo -and $locInfo.PSObject.Properties['Zones'] -and $locInfo.Zones) { $locInfo.Zones }
-                   elseif ($locInfo -and $locInfo.PSObject.Properties['zones'] -and $locInfo.zones) { $locInfo.zones }
-                   else { @() }
+        $liZones = @(if ($locInfo -and $locInfo.PSObject.Properties['Zones'] -and $locInfo.Zones) { $locInfo.Zones }
+                     elseif ($locInfo -and $locInfo.PSObject.Properties['zones'] -and $locInfo.zones) { $locInfo.zones }
+                     else { })
         $zones = if ($liZones.Count -gt 0) { $liZones -join "," } else { "None" }
 
         # Check restrictions
