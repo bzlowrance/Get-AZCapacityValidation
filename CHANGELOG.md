@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0] - 2026-04-23
+
+### Added
+
+- **Module version check** — warns at startup if Az.Accounts, Az.Resources, Az.Compute, or ImportExcel are below recommended versions; does not block execution
+- **Subscription name support** — `-SourceSubscription` and `-TargetSubscription` now accept a friendly subscription name or GUID (renamed from `-SourceSubscriptionId` / `-TargetSubscriptionId`)
+- **Auto-detect environment from target region** — if `-Environment` is not specified, the script infers the correct cloud (e.g., `usgovarizona` → `AzureUSGovernment`) instead of defaulting to `AzureCloud`
+
+### Changed
+
+- `-Environment` no longer defaults to `AzureCloud` — if omitted, the script uses the current session's environment or infers it from the target region; only reconnects when an explicit mismatch is detected
+
+### Fixed
+
+- **`NameSpace` property error** — resolved `The property 'NameSpace' cannot be found on this object` by dynamically detecting the correct property name (`ProviderNamespace` vs `NameSpace` vs `Namespace`) across Az module versions
+
 ## [1.0.0] - 2026-04-23
 
 ### Added

@@ -82,6 +82,27 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# ── Module version recommendations ───────────────────────────────────────────
+$recommendedVersions = @{
+    'Az.Accounts' = [version]'3.0.0'
+    'Az.Resources' = [version]'7.5.0'
+    'Az.Compute'   = [version]'8.0.0'
+    'ImportExcel'  = [version]'7.8.0'
+}
+
+foreach ($modName in $recommendedVersions.Keys) {
+    $mod = Get-Module -Name $modName -ListAvailable -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1
+    if ($mod) {
+        if ($mod.Version -lt $recommendedVersions[$modName]) {
+            Write-Host "  [warn] $modName $($mod.Version) is installed but $($recommendedVersions[$modName])+ is recommended. Run 'Update-Module $modName' to update." -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host "  [missing] $modName is not installed. Run 'Install-Module $modName -Scope CurrentUser' to install." -ForegroundColor Red
+    }
+}
+Write-Host ""
+
 # ── Helper: Infer environment from a region name ─────────────────────────────
 function Get-EnvironmentFromRegion {
     param([string]$Region)
@@ -146,8 +167,16 @@ function Get-AZCapableTypes {
     $providers = Get-AzResourceProvider -ListAvailable
 
     foreach ($provider in $providers) {
+        # Handle property name differences across Az module versions
+        $ns = if ($provider.PSObject.Properties['ProviderNamespace']) { $provider.ProviderNamespace }
+              elseif ($provider.PSObject.Properties['NameSpace']) { $provider.NameSpace }
+              else { $provider.Namespace }
+
         foreach ($rt in $provider.ResourceTypes) {
-            $fullType = "$($provider.NameSpace)/$($rt.ResourceTypeName)"
+            $rtName = if ($rt.PSObject.Properties['ResourceTypeName']) { $rt.ResourceTypeName }
+                      else { $rt.ResourceType }
+
+            $fullType = "$ns/$rtName"
 
             # Check if this resource type is available in the target region with zone support
             $locationInfo = $rt.ZoneMappings | Where-Object { $_.Location -eq $Region }
