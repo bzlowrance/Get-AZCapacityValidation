@@ -552,7 +552,7 @@ $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $xlsxPath = Join-Path $OutputPath "AZ-Validation-$timestamp.xlsx"
 
 # All resources sheet
-$results | Export-Excel -Path $xlsxPath -WorksheetName "All Resources" -AutoSize -AutoFilter -FreezeTopRow -BoldTopRow -TableStyle Medium6
+$results | Export-Excel -Path $xlsxPath -WorksheetName "All Resources" -AutoSize -AutoFilter -FreezeTopRow -BoldTopRow -TableStyle Medium4
 
 # Resiliency Gained sheet
 $gained = $results | Where-Object { $_.ResiliencyChange -eq "Gained" }
@@ -568,14 +568,14 @@ if ($lost) {
 
 # Summary sheet
 $summaryData = $results | Group-Object ResiliencyChange | Select-Object @{N='ResiliencyChange';E={$_.Name}}, @{N='ResourceCount';E={$_.Count}}
-$summaryData | Export-Excel -Path $xlsxPath -WorksheetName "Summary" -AutoSize -AutoFilter -FreezeTopRow -BoldTopRow -TableStyle Medium6 -Append
+$summaryData | Export-Excel -Path $xlsxPath -WorksheetName "Summary" -AutoSize -AutoFilter -FreezeTopRow -BoldTopRow -TableStyle Medium4 -Append
 
 # VM SKU Details sheet
 $vmResults = $results | Where-Object { $_.ResourceType -eq "Microsoft.Compute/virtualMachines" }
 if ($vmResults) {
     $vmResults | Select-Object ResourceName, SourceSubscription, SourceResourceGroup, SourceRegion, VMSize, CurrentZones,
         TargetSubscription, TargetRegion, SKUTargetZones, SKURestrictions, SKUAvailability, ResiliencyChange |
-        Export-Excel -Path $xlsxPath -WorksheetName "VM SKU Details" -AutoSize -AutoFilter -FreezeTopRow -BoldTopRow -TableStyle Medium2 -Append
+        Export-Excel -Path $xlsxPath -WorksheetName "VM SKU Details" -AutoSize -AutoFilter -FreezeTopRow -BoldTopRow -TableStyle Medium4 -Append
 }
 
 Write-Host "`nResults exported to: $xlsxPath" -ForegroundColor Green
