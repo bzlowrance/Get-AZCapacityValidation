@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.1] - 2026-04-23
+
+### Fixed
+
+- **`Location` property error on ZoneMappings** — resolved `The property 'Location' cannot be found on this object` by adding defensive property detection (`Location`/`location`) on ZoneMapping and LocationInfo objects across all Az module versions
+- **`Locations` property error on resource types** — same defensive access pattern applied to the `Locations`/`locations` property when checking region availability
+- **SKU LocationInfo compatibility** — `Get-AzComputeResourceSku` results now use the same property detection for `Location` and `Zones` on LocationInfo objects
+
 ## [1.1.0] - 2026-04-23
 
 ### Added
