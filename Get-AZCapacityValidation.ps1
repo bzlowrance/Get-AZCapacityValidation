@@ -29,7 +29,8 @@
 
 .PARAMETER Environment
     Azure cloud environment. Valid values: AzureCloud, AzureUSGovernment, AzureChinaCloud, AzureGermanCloud.
-    Defaults to AzureCloud. Use AzureUSGovernment for GCC-High / DoD endpoints.
+    If not specified, uses the environment from your current Azure session. Only specify this to
+    force a switch to a different cloud (e.g., you're logged into commercial but want to target Gov).
 
 .PARAMETER OutputPath
     Optional. Path to export results as an Excel file (.xlsx). Defaults to current directory.
@@ -70,7 +71,7 @@ param(
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("AzureCloud", "AzureUSGovernment", "AzureChinaCloud", "AzureGermanCloud")]
-    [string]$Environment = "AzureCloud",
+    [string]$Environment,
 
     [Parameter(Mandatory = $false)]
     [string]$OutputPath = "."
@@ -81,23 +82,38 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# ── Helper: Infer environment from a region name ─────────────────────────────
+function Get-EnvironmentFromRegion {
+    param([string]$Region)
+
+    $r = $Region.ToLower()
+    if ($r -match '^usgov|^usdod') { return "AzureUSGovernment" }
+    if ($r -match '^china')        { return "AzureChinaCloud" }
+    if ($r -match '^germany')      { return "AzureGermanCloud" }
+    return "AzureCloud"
+}
+
 # ── Helper: Ensure logged in to the correct environment ──────────────────────
 function Ensure-AzContext {
     param([string]$RequiredEnvironment)
 
     $ctx = Get-AzContext -ErrorAction SilentlyContinue
     if (-not $ctx) {
+        # No session — connect to the requested environment (default AzureCloud if none specified)
+        if (-not $RequiredEnvironment) { $RequiredEnvironment = "AzureCloud" }
         Write-Host "No active Azure session. Connecting to '$RequiredEnvironment'..." -ForegroundColor Yellow
         Connect-AzAccount -Environment $RequiredEnvironment | Out-Null
         $ctx = Get-AzContext
     }
-    elseif ($ctx.Environment.Name -ne $RequiredEnvironment) {
+    elseif ($RequiredEnvironment -and $ctx.Environment.Name -ne $RequiredEnvironment) {
+        # Session exists but targets a different environment than explicitly requested
         Write-Host "Current session targets '$($ctx.Environment.Name)' but '$RequiredEnvironment' was requested." -ForegroundColor Yellow
         Write-Host "Reconnecting to '$RequiredEnvironment'..." -ForegroundColor Yellow
         Disconnect-AzAccount -ErrorAction SilentlyContinue | Out-Null
         Connect-AzAccount -Environment $RequiredEnvironment | Out-Null
         $ctx = Get-AzContext
     }
+    # If no environment was specified, just use the existing session as-is
     return $ctx
 }
 
@@ -247,7 +263,14 @@ function Get-VMSkuZoneMap {
 # Main
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Infer environment from target region if -Environment not explicitly provided
+if (-not $Environment) {
+    $Environment = Get-EnvironmentFromRegion -Region $TargetRegion
+    Write-Host "Inferred environment '$Environment' from target region '$TargetRegion'." -ForegroundColor Cyan
+}
+
 $ctx = Ensure-AzContext -RequiredEnvironment $Environment
+$Environment = $ctx.Environment.Name
 
 # Resolve source subscription
 if ($SourceSubscription) {
